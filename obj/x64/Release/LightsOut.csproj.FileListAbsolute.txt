@@ -1,0 +1,7 @@
+C:\Users\bumblebee\Desktop\GitHub\LightsOut\bin\x64\Release\LightsOut.dll.config
+C:\Users\bumblebee\Desktop\GitHub\LightsOut\bin\x64\Release\LightsOut.dll
+C:\Users\bumblebee\Desktop\GitHub\LightsOut\bin\x64\Release\LightsOut.pdb
+C:\Users\bumblebee\Desktop\GitHub\LightsOut\obj\x64\Release\LightsOut.csprojAssemblyReference.cache
+C:\Users\bumblebee\Desktop\GitHub\LightsOut\obj\x64\Release\LightsOut.csproj.CoreCompileInputs.cache
+C:\Users\bumblebee\Desktop\GitHub\LightsOut\obj\x64\Release\LightsOut.dll
+C:\Users\bumblebee\Desktop\GitHub\LightsOut\obj\x64\Release\LightsOut.pdb
