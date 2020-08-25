@@ -448,6 +448,24 @@ namespace SpDi2
             return OldProtect;
         }
 
+        public static UInt32 NtProtectVirtualMemoryLoPE(IntPtr ProcessHandle, ref ulong BaseAddress, ref ulong RegionSize, UInt32 NewProtect)
+        {
+            UInt32 OldProtect = 0;
+            object[] funcargs =
+            {
+                ProcessHandle, BaseAddress, RegionSize, NewProtect, OldProtect
+            };
+
+            SpDi.Native.NTSTATUS retValue = (SpDi.Native.NTSTATUS)Generic.DynamicAPIInvoke(@"ntdll.dll", @"NtProtectVirtualMemory", typeof(DELEGATES.NtProtectVirtualMemory), ref funcargs);
+            if (retValue != SpDi.Native.NTSTATUS.Success)
+            {
+                throw new InvalidOperationException("Failed to change memory protection, " + retValue);
+            }
+
+            OldProtect = (UInt32)funcargs[4];
+            return OldProtect;
+        }
+
         public static UInt32 NtWriteVirtualMemory(IntPtr ProcessHandle, IntPtr BaseAddress, IntPtr Buffer, UInt32 BufferLength)
         {
             UInt32 BytesWritten = 0;
@@ -676,6 +694,14 @@ namespace SpDi2
                 IntPtr ProcessHandle,
                 ref IntPtr BaseAddress,
                 ref IntPtr RegionSize,
+                UInt32 NewProtect,
+                ref UInt32 OldProtect);
+
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate UInt32 NtProtectVirtualMemoryLoPE(
+                IntPtr ProcessHandle,
+                ref ulong BaseAddress,
+                ref ulong RegionSize,
                 UInt32 NewProtect,
                 ref UInt32 OldProtect);
 

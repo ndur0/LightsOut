@@ -8,7 +8,7 @@ namespace SpDi2
 {
     public static class Win32
     {
-        public static bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, ref uint lpflOldProtect)
+        public static bool VirtualProtect(IntPtr lpAddress, IntPtr dwSize, uint flNewProtect, ref uint lpflOldProtect)
         {
             object[] funcargs =
             {
@@ -145,7 +145,7 @@ namespace SpDi2
             public delegate uint VirtualQueryEx(IntPtr hProcess, UIntPtr lpAddress, out SpDi.Win32.WinNT.PE_MEMORY_BASIC_INFORMATION lpBuffer, int dwLength);
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-            public delegate bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+            public delegate bool VirtualProtect(IntPtr lpAddress, IntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
 
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate void GetSystemInfo(ref SpDi.Win32.Kernel32.PE_SYSTEM_INFO info);
